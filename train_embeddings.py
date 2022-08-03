@@ -13,20 +13,25 @@ from transformers import BertForMaskedLM, BertTokenizer
 logger = log.get_logger('root')
 
 
-def get_more_examples(idioms, examples_folder, n=10, lower=True):
+def get_more_examples_from_preprocessed(idioms, examples_folder, n=10, lower=True):
+    """
+    A variation of get_more_examples() that takes already processed examples.
+    The example files,
+      - are named with the single-token idiom (e.g. 'ID*ID.txt')
+      - contain sentences where idioms are already replaced with their single-tokens 'ID*ID'
+    """
     examps = {}
-    for idi in idioms:
-        if '(' not in idi:
-            formatted = f'ID{"".join(idi.split())}ID'
-            with open(f'{examples_folder}/{idi}.txt', 'r') as f:
-                lines = f.readlines()
-                if lower:
-                    lines = [li.lower().replace('/', ' ') for li in lines]
-                lines = [re.sub(f'{idi}', f' {formatted} ', li) for li in lines]
-                lines = [' '.join(li.split()) for li in lines]
-                examps[formatted] = random.sample(lines, k=min(len(lines), n))
+    for formatted_idiom in idioms:
+        with open(f'{examples_folder}/{formatted_idiom}.txt', 'r') as f:
+            lines = f.readlines()
+            if lower:
+                lines = [li.lower().replace('/', ' ') for li in lines]
+                # Don't lowercase the idiom itself
+                lower_idiom = formatted_idiom.lower()
+                lines = [li.replace(lower_idiom, formatted_idiom) for li in lines]
+            lines = [' '.join(li.split()) for li in lines]
+            examps[formatted_idiom] = random.sample(lines, k=min(len(lines), n))
     return examps
-
 
 def get_idioms(examples_folder):
     onlyfiles = [f for f in listdir(examples_folder) if isfile(join(examples_folder, f))]
@@ -40,7 +45,7 @@ def train_embeddings(bert_model, bertram_model, output_dir, examples_folder, no_
     idioms = get_idioms(examples_folder)
     logger.info(f'Found {len(idioms)} en-idioms in {examples_folder}')
 
-    examples = get_more_examples(idioms, examples_folder, no_examples)
+    examples = get_more_examples_from_preprocessed(idioms, examples_folder, no_examples)
     logger.info('Fetched examples from files')
 
     print(list(examples.values())[0])
