@@ -4,6 +4,7 @@ import sys
 import log
 import random
 import argparse
+import os
 from os import listdir
 from os.path import isfile, join
 
@@ -30,6 +31,9 @@ def get_more_examples_from_preprocessed(idioms, examples_folder, n=10, lower=Tru
                 lower_idiom = formatted_idiom.lower()
                 lines = [li.replace(lower_idiom, formatted_idiom) for li in lines]
             lines = [' '.join(li.split()) for li in lines]
+            if len(lines) < 2:
+                logger.warning(f'{formatted_idiom} has less than 2 context lines')
+                continue
             examps[formatted_idiom] = random.sample(lines, k=min(len(lines), n))
     return examps
 
@@ -39,6 +43,11 @@ def get_idioms(examples_folder):
 
 
 def train_embeddings(bert_model, bertram_model, output_dir, examples_folder, no_examples):
+    if os.path.isdir(output_dir):
+        logger.warning(f'Output directory {output_dir} already exists. Will not overwrite.')
+        return
+    else:
+        os.makedirs(output_dir)
     model = BertForMaskedLM.from_pretrained(bert_model)
     tokenizer = BertTokenizer.from_pretrained(bert_model)
     bertram = BertramWrapper(bertram_model, device='cuda')
